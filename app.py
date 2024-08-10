@@ -41,11 +41,13 @@ def get_disease_info():
     try:
         # Query to find diseases based on symptoms
         cursor.execute("""
-            SELECT d.disease_id, d.disease_name 
-            FROM diseases d 
-            JOIN symptoms s ON d.disease_id = s.disease_id 
-            WHERE s.symptom_name ILIKE %s
-        """, ('%' + symptoms + '%',))
+    SELECT d.disease_id, d.disease_name 
+    FROM diseases d 
+    JOIN symptom_disease_mapping sdm ON d.disease_id = sdm.disease_id
+    JOIN symptoms s ON sdm.symptom_id = s.symptom_id
+    WHERE s.symptom_name ILIKE %s
+""", ('%' + symptoms + '%',))
+
         
         diseases = cursor.fetchall()
         
