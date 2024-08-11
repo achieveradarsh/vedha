@@ -37,39 +37,48 @@ def get_treatments(disease_id):
 def get_disease_info():
     data = request.json
     symptoms = data.get('symptoms')
-    
+
+    if not symptoms:
+        return jsonify({"error": "No symptoms provided."}), 400
+
     try:
+        # Log the symptoms received
+        app.logger.info(f"Received symptoms: {symptoms}")
+        
         # Query to find diseases based on symptoms
         cursor.execute("""
-    SELECT d.disease_id, d.disease_name 
-    FROM diseases d 
-    JOIN symptom_disease_mapping sdm ON d.disease_id = sdm.disease_id
-    JOIN symptoms s ON sdm.symptom_id = s.symptom_id
-    WHERE s.symptom_name ILIKE %s
-""", ('%' + symptoms + '%',))
+            SELECT d.disease_id, d.disease_name 
+            FROM diseases d 
+            JOIN symptom_disease_mapping sdm ON d.disease_id = sdm.disease_id
+            JOIN symptoms s ON sdm.symptom_id = s.symptom_id
+            WHERE s.symptom_name ILIKE %s
+        """, ('%' + symptoms + '%',))
 
-        
         diseases = cursor.fetchall()
-        
+
+        # Log the query result
+        app.logger.info(f"Diseases found: {diseases}")
+
         if not diseases:
             return jsonify({"error": "No diseases found for the given symptoms."}), 404
-        
+
         # Get treatments for each disease
         disease_info = []
         for disease in diseases:
             cursor.execute("SELECT * FROM treatments WHERE disease_id = %s", (disease[0],))
             treatments = cursor.fetchall()
-            
+
             disease_info.append({
                 "disease_id": disease[0],
                 "disease_name": disease[1],
                 "treatments": [{"type": t[2], "description": t[3]} for t in treatments]
             })
-        
+
         return jsonify({"result": disease_info})
 
     except Exception as e:
         conn.rollback()  # Rollback in case of error
+        app.logger.error(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
